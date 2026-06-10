@@ -186,6 +186,18 @@ local function min2(a, b)
   return b
 end
 
+local function reflectedPositions(pos, size)
+  local period = size * 2
+  return {
+    pos - period,
+    pos,
+    pos + period,
+    (period - pos + 1) - period,
+    (period - pos + 1),
+    (period - pos + 1) + period,
+  }
+end
+
 local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanelHeight)
   local liveCount = math.max(1, math.floor(msg.liveCount or 1))
   local canvasWidth = math.max(1, math.floor(msg.canvasWidth or localPanelWidth))
@@ -198,7 +210,7 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
   local trailDamping = tonumber(msg.trailDamping) or 0.08
   local impactDecay = tonumber(msg.impactDecay) or 0.9
   local impactStrength = tonumber(msg.impactStrength) or 2.4
-  local pixelScale = math.max(1, math.floor(tonumber(msg.pixelScale) or 4))
+  local pixelScale = math.max(1, math.floor(tonumber(msg.pixelScale) or 2))
   local src = type(msg.sources) == "table" and msg.sources or {}
 
   local sources = {}
@@ -220,11 +232,13 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
           local localPulseWidth = math.max(0.9, pulseWidth)
           local trailWidth = localPulseWidth * (2.5 + trailDamping * 4)
           local maxReach = radius + math.max(DEFAULT_RIPPLE_MAX_DISTANCE, trailWidth)
+          local xImages = reflectedPositions(sx, canvasWidth)
+          local yImages = reflectedPositions(sy, canvasHeight)
           sources[#sources + 1] = {
             sx = sx,
             sy = sy,
-            mx = (2 * canvasWidth - sx + 1),
-            my = (2 * canvasHeight - sy + 1),
+            xImages = xImages,
+            yImages = yImages,
             radius = radius,
             ampAge = ampAge,
             impactAge = (ampAge * impactStrength) / (1 + age * impactDecay * 2),
@@ -254,14 +268,6 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
     local localYEnd = math.min(localPanelHeight, localYStart + pixelScale - 1)
     local gy = (liveCount - stackIndex) * localPanelHeight + math.floor((localYStart + localYEnd) / 2)
     local bgRow = {}
-    local dy2 = {}
-
-    for i = 1, #sources do
-      local s = sources[i]
-      local dy = min2(math.abs(gy - s.sy), math.abs(gy - s.my))
-      dy2[i] = dy * dy
-    end
-
     for localXStart = 1, localPanelWidth, pixelScale do
       local localXEnd = math.min(localPanelWidth, localXStart + pixelScale - 1)
       local gx = math.floor((localXStart + localXEnd) / 2)
@@ -269,20 +275,35 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
 
       for i = 1, #sources do
         local s = sources[i]
-        local dx = min2(math.abs(gx - s.sx), math.abs(gx - s.mx))
-        local d2 = dx * dx + dy2[i]
+        local bestD2 = 1e30
+        for xi = 1, #s.xImages do
+          local dx = gx - s.xImages[xi]
+          local dx2 = dx * dx
+          if dx2 <= s.maxReach2 then
+            for yi = 1, #s.yImages do
+              local dy = gy - s.yImages[yi]
+              local d2 = dx2 + dy * dy
+              if d2 < bestD2 then
+                bestD2 = d2
+              end
+            end
+          end
+        end
+
+        local d2 = bestD2
         if d2 <= s.maxReach2 then
           local d = math.sqrt(d2)
           local delta = d - s.radius
           local ad = math.abs(delta)
-          local waveFront = 0
+          local core = 0
           if ad < s.pulseWidth then
-            waveFront = 1 - (ad / s.pulseWidth)
+            core = 1 - (ad / s.pulseWidth)
           end
 
-          local trailing = 0
+          local ring = 0
           if ad < s.trailWidth then
-            trailing = 1 - (ad / s.trailWidth)
+            local env = 1 - (ad / s.trailWidth)
+            ring = math.cos(delta * 0.72) * env
           end
 
           local impact = 0
@@ -290,11 +311,11 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
             impact = s.impactAge / (1 + d2 * 0.22)
           end
 
-          pressure = pressure + s.ampAge * (1.25 * waveFront + 0.25 * trailing) + impact
+          pressure = pressure + s.ampAge * (1.1 * core + 0.75 * ring) + impact
         end
       end
 
-      local normalized = clamp(pressure / 2.1, 0, 1)
+      local normalized = clamp((pressure + 1.2) / 2.4, 0, 1)
       local bg = colors.toBlit(chooseColor(normalized, ripplePalette))
       for fillX = localXStart, localXEnd do
         bgRow[fillX] = bg

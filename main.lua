@@ -14,7 +14,7 @@ local RIPPLE_FREQ = 0.9
 local RIPPLE_TRAIL_DAMPING = 0.08
 local RIPPLE_IMPACT_DECAY = 0.9
 local RIPPLE_IMPACT_STRENGTH = 2.4
-local RIPPLE_PIXEL_SCALE = 4
+local RIPPLE_PIXEL_SCALE = 2
 
 if not peripheral.isPresent(MODEM_SIDE) or peripheral.getType(MODEM_SIDE) ~= "modem" then
   error("Main computer needs a modem on side: " .. MODEM_SIDE)
