@@ -108,7 +108,7 @@ end
 local function frameInterval(nodeCount, demoKey)
   local interval = MIN_FRAME_SECONDS + (math.max(nodeCount, 1) - 1) * 0.01
   if demoKey == "ripple" then
-    interval = interval + 0.04
+    interval = interval + 0.06
   end
   if demoKey == "life" then
     interval = interval + 0.02
@@ -516,6 +516,8 @@ local function getRippleSourcesForBroadcast()
   return out
 end
 
+local lastRippleBroadcastCount = -1
+
 local function handleNodeMessage(sender, msg)
   if type(msg) ~= "table" then
     return
@@ -590,8 +592,12 @@ while true do
 
     if demoKey == "ripple" then
       local sources = getRippleSourcesForBroadcast()
-      broadcastRippleState(live, panelWidth, panelHeight, sources)
+      if #sources > 0 or lastRippleBroadcastCount ~= 0 then
+        broadcastRippleState(live, panelWidth, panelHeight, sources)
+        lastRippleBroadcastCount = #sources
+      end
     else
+      lastRippleBroadcastCount = -1
       local buf = makeBuffer(w, h)
       demo.render(demo, buf, w, h)
       local rows = bufferToRows(buf, w, h)
