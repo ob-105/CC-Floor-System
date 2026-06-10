@@ -22,6 +22,7 @@ The node network uses wired modems on the **bottom** side for controller communi
   - Plasma
 - Distributed ripple rendering: each node computes its own ripple slice, so adding nodes increases total ripple compute capacity
 - Auto-start installers for node and main computers
+- Auto-update on reboot: startup checks GitHub and refreshes runtime files before launch
 
 ## Wiring
 
@@ -53,6 +54,14 @@ wget run https://raw.githubusercontent.com/ob-105/CC-Floor-System/main/install_m
 ```
 
 The installer downloads main runtime files and creates `/startup` to run `main.lua` automatically.
+
+## Auto Update
+
+After running the latest installers, each reboot will:
+- try to download fresh `common.lua` and role runtime (`node.lua` or `main.lua`) from GitHub
+- run local files even if HTTP is unavailable or download fails
+
+If you installed before this feature was added, rerun installers one time to replace your `/startup` script.
 
 ## Controls (main computer)
 

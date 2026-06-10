@@ -31,7 +31,46 @@ end
 
 local function writeStartup()
   local h = fs.open("startup", "w")
-  h.writeLine("shell.run(\"main.lua\")")
+  h.write([[
+local OWNER = "ob-105"
+local REPO = "CC-Floor-System"
+local BRANCH = "main"
+
+local function rawUrl(path)
+  return string.format("https://raw.githubusercontent.com/%s/%s/%s/%s", OWNER, REPO, BRANCH, path)
+end
+
+local function downloadIfPossible(path)
+  if not http then
+    return false
+  end
+
+  local res = http.get(rawUrl(path))
+  if not res then
+    return false
+  end
+
+  local content = res.readAll()
+  res.close()
+
+  local out = fs.open(path, "w")
+  if not out then
+    return false
+  end
+  out.write(content)
+  out.close()
+  return true
+end
+
+downloadIfPossible("common.lua")
+downloadIfPossible("main.lua")
+
+if fs.exists("main.lua") then
+  shell.run("main.lua")
+else
+  print("main.lua missing. Run install_main.lua again.")
+end
+]])
   h.close()
 end
 
