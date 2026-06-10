@@ -46,11 +46,12 @@ end
 
 local function setupMonitors(config)
   local monitors = {}
+  local touchNameToSide = {}
 
   for _, side in ipairs(common.MONITOR_SIDES) do
     local mapped = config.monitorSides and config.monitorSides[side] or side
     if not peripheral.isPresent(mapped) or peripheral.getType(mapped) ~= "monitor" then
-      error("Missing monitor on side mapping: " .. side .. " -> " .. tostring(mapped))
+      error("Missing monitor mapping: " .. side .. " -> " .. tostring(mapped))
     end
 
     local mon = peripheral.wrap(mapped)
@@ -59,9 +60,10 @@ local function setupMonitors(config)
     mon.clear()
     mon.setCursorPos(1, 1)
     monitors[side] = mon
+    touchNameToSide[mapped] = side
   end
 
-  return monitors
+  return monitors, touchNameToSide
 end
 
 local function drawMonitor(mon, rows)
@@ -88,7 +90,7 @@ end
 
 local config = loadConfig()
 ensureRednet(config.modemSide)
-local monitors = setupMonitors(config)
+local monitors, touchNameToSide = setupMonitors(config)
 
 local nodeId = os.getComputerID()
 local hostname = config.nodeName or ("floor-node-" .. tostring(nodeId))
@@ -184,9 +186,10 @@ while true do
       end
     end
   elseif event == "monitor_touch" then
-    local side = p1
+    local touchName = p1
     local x = p2
     local y = p3
+    local side = touchNameToSide[touchName] or touchName
 
     if controllerId then
       sendTouch(controllerId, side, x, y)

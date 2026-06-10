@@ -50,18 +50,25 @@ local function askNumber(prompt, default)
   end
 end
 
-local function writeConfig(stackIndex)
+local function detectMonitors()
+  local names = peripheral.getNames()
+  local monitors = {}
+  for _, name in ipairs(names) do
+    if peripheral.getType(name) == "monitor" then
+      monitors[#monitors + 1] = name
+    end
+  end
+  table.sort(monitors)
+  return monitors
+end
+
+local function writeConfig(stackIndex, monitorSides)
   local label = os.getComputerLabel()
   local config = {
     modemSide = "bottom",
     stackIndex = stackIndex,
     nodeName = label and ("node-" .. label) or nil,
-    monitorSides = {
-      front = "front",
-      left = "left",
-      back = "back",
-      right = "right",
-    },
+    monitorSides = monitorSides,
   }
 
   local h = fs.open("node_config.lua", "w")
@@ -71,15 +78,32 @@ end
 
 print("CC Floor System - Node Installer")
 print("This computer should have:")
-print("- 4 advanced monitors on front/left/back/right")
+print("- access to at least 4 advanced monitors")
 print("- 1 wired modem on bottom")
 print("")
 
 local stackIndex = askNumber("Stack index for this node [1]: ", 1)
+local monitors = detectMonitors()
+if #monitors < 4 then
+  error("Found " .. tostring(#monitors) .. " monitor peripherals. Need at least 4.")
+end
+
+local monitorSides = {
+  front = monitors[1],
+  left = monitors[2],
+  back = monitors[3],
+  right = monitors[4],
+}
+
+print("Using monitor mapping:")
+print("front -> " .. monitorSides.front)
+print("left  -> " .. monitorSides.left)
+print("back  -> " .. monitorSides.back)
+print("right -> " .. monitorSides.right)
 
 download("common.lua")
 download("node.lua")
-writeConfig(stackIndex)
+writeConfig(stackIndex, monitorSides)
 writeStartup()
 
 print("")
