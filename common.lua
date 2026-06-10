@@ -4,6 +4,9 @@ local common = {}
 common.PROTOCOL = "cc_floor_system_v1"
 common.DEFAULT_PANEL_WIDTH = 6
 common.DEFAULT_PANEL_HEIGHT = 7
+-- Backwards compatibility for older scripts that still reference these names.
+common.MONITOR_WIDTH = common.DEFAULT_PANEL_WIDTH
+common.MONITOR_HEIGHT = common.DEFAULT_PANEL_HEIGHT
 common.MONITORS_PER_NODE = 4
 common.MAX_NODES = 20
 
@@ -15,13 +18,21 @@ common.MONITOR_SIDES = {
 }
 
 function common.totalWidth(panelWidth)
+  -- Support both old signature totalWidth() and current totalWidth(panelWidth).
   local w = tonumber(panelWidth) or common.DEFAULT_PANEL_WIDTH
   return w * common.MONITORS_PER_NODE
 end
 
 function common.totalHeight(panelHeight, nodeCount)
+  -- Support both old signature totalHeight(nodeCount) and
+  -- current totalHeight(panelHeight, nodeCount).
   local h = tonumber(panelHeight) or common.DEFAULT_PANEL_HEIGHT
-  return h * math.max(nodeCount, 1)
+  local count = tonumber(nodeCount)
+  if count == nil then
+    count = tonumber(panelHeight) or 1
+    h = common.DEFAULT_PANEL_HEIGHT
+  end
+  return h * math.max(count, 1)
 end
 
 function common.defaultNodeConfig()
