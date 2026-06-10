@@ -14,6 +14,7 @@ local RIPPLE_FREQ = 0.9
 local RIPPLE_TRAIL_DAMPING = 0.18
 local RIPPLE_IMPACT_DECAY = 1.4
 local RIPPLE_IMPACT_STRENGTH = 1.8
+local RIPPLE_PIXEL_SCALE = 4
 
 if not peripheral.isPresent(MODEM_SIDE) or peripheral.getType(MODEM_SIDE) ~= "modem" then
   error("Main computer needs a modem on side: " .. MODEM_SIDE)
@@ -488,6 +489,7 @@ local function broadcastRippleState(live, panelWidth, panelHeight, sources)
     trailDamping = RIPPLE_TRAIL_DAMPING,
     impactDecay = RIPPLE_IMPACT_DECAY,
     impactStrength = RIPPLE_IMPACT_STRENGTH,
+    pixelScale = RIPPLE_PIXEL_SCALE,
     sources = sources,
   }
 

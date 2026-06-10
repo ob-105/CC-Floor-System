@@ -167,14 +167,13 @@ end
 
 local ripplePalette = {
   colors.black,
-  colors.gray,
-  colors.lightBlue,
-  colors.cyan,
-  colors.blue,
-  colors.purple,
   colors.blue,
   colors.cyan,
   colors.lightBlue,
+  colors.white,
+  colors.yellow,
+  colors.orange,
+  colors.red,
 }
 
 local DEFAULT_RIPPLE_MAX_DISTANCE = 56
@@ -196,10 +195,10 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
   local waveSpeed = tonumber(msg.waveSpeed) or 3.2
   local damping = tonumber(msg.damping) or 0.28
   local pulseWidth = tonumber(msg.pulseWidth) or 2.8
-  local freq = tonumber(msg.freq) or 0.9
   local trailDamping = tonumber(msg.trailDamping) or 0.18
   local impactDecay = tonumber(msg.impactDecay) or 1.4
   local impactStrength = tonumber(msg.impactStrength) or 1.8
+  local pixelScale = math.max(1, math.floor(tonumber(msg.pixelScale) or 4))
   local src = type(msg.sources) == "table" and msg.sources or {}
 
   local sources = {}
@@ -218,7 +217,7 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
         if ampAge > 0.0005 then
           local vel = tonumber(s.vel) or 1.0
           local radius = age * waveSpeed * vel
-          local localPulseWidth = math.max(0.8, pulseWidth)
+          local localPulseWidth = math.max(0.9, pulseWidth)
           local trailWidth = localPulseWidth * (2.5 + trailDamping * 4)
           local maxReach = radius + math.max(DEFAULT_RIPPLE_MAX_DISTANCE, trailWidth)
           sources[#sources + 1] = {
@@ -226,14 +225,11 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
             sy = sy,
             mx = (2 * canvasWidth - sx + 1),
             my = (2 * canvasHeight - sy + 1),
-            phase = age * waveSpeed * 0.75,
             radius = radius,
             ampAge = ampAge,
             impactAge = (ampAge * impactStrength) / (1 + age * impactDecay * 2),
             pulseWidth = localPulseWidth,
             trailWidth = trailWidth,
-            freq = math.max(0.3, freq),
-            turbulence = 0.35 + trailDamping,
             maxReach2 = maxReach * maxReach,
           }
         end
@@ -254,8 +250,9 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
   local textConstant = string.rep(" ", localPanelWidth)
   local fgConstant = string.rep("f", localPanelWidth)
 
-  for localY = 1, localPanelHeight do
-    local gy = (liveCount - stackIndex) * localPanelHeight + localY
+  for localYStart = 1, localPanelHeight, pixelScale do
+    local localYEnd = math.min(localPanelHeight, localYStart + pixelScale - 1)
+    local gy = (liveCount - stackIndex) * localPanelHeight + math.floor((localYStart + localYEnd) / 2)
     local bgRow = {}
     local dy2 = {}
 
@@ -265,9 +262,10 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
       dy2[i] = dy * dy
     end
 
-    for localX = 1, localPanelWidth do
-      local gx = localX
-      local v = 0.08
+    for localXStart = 1, localPanelWidth, pixelScale do
+      local localXEnd = math.min(localPanelWidth, localXStart + pixelScale - 1)
+      local gx = math.floor((localXStart + localXEnd) / 2)
+      local pressure = 0
 
       for i = 1, #sources do
         local s = sources[i]
@@ -277,36 +275,37 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
           local d = math.sqrt(d2)
           local delta = d - s.radius
           local ad = math.abs(delta)
-          local pulse = 0
+          local waveFront = 0
           if ad < s.pulseWidth then
-            pulse = 1 - (ad / s.pulseWidth)
+            waveFront = 1 - (ad / s.pulseWidth)
           end
 
-          local wave = 0
+          local trailing = 0
           if ad < s.trailWidth then
-            local t = 1 - (ad / s.trailWidth)
-            local band = math.floor((ad + s.phase) * s.freq)
-            if band % 2 == 0 then
-              wave = t
-            else
-              wave = -0.55 * t
-            end
+            trailing = 1 - (ad / s.trailWidth)
           end
 
           local impact = 0
           if d2 < 49 then
             impact = s.impactAge / (1 + d2 * 0.22)
           end
-          v = v + s.ampAge * (pulse + s.turbulence * wave) + impact
+
+          pressure = pressure + s.ampAge * (1.25 * waveFront + 0.25 * trailing) + impact
         end
       end
 
-      local normalized = clamp((v + 1.8) / 3.6, 0, 1)
-      bgRow[localX] = colors.toBlit(chooseColor(normalized, ripplePalette))
+      local normalized = clamp(pressure / 2.1, 0, 1)
+      local bg = colors.toBlit(chooseColor(normalized, ripplePalette))
+      for fillX = localXStart, localXEnd do
+        bgRow[fillX] = bg
+      end
     end
 
-    mon.setCursorPos(1, localY)
-    mon.blit(textConstant, fgConstant, table.concat(bgRow))
+    local bgString = table.concat(bgRow)
+    for localY = localYStart, localYEnd do
+      mon.setCursorPos(1, localY)
+      mon.blit(textConstant, fgConstant, bgString)
+    end
   end
 end
 

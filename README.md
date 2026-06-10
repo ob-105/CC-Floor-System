@@ -17,11 +17,11 @@ The node network uses wired modems on the **bottom** side for controller communi
 - Touch input from any monitor routed to main controller
 - Demo switching from main computer keys
 - Included demos:
-  - Ripple (touch creates high-energy impact pulses that propagate, reflect, interact turbulently, then settle)
+  - Pressure (touch creates high-pressure pulses that propagate, reflect, interact turbulently, then settle)
   - Game of Life (touch cells to toggle)
   - Plasma
 - Distributed ripple rendering: each node computes its own ripple slice, so adding nodes increases total ripple compute capacity
-- Ripple demo includes adaptive quality limits (source count/age/distance) to keep performance stable on larger floors
+- Pressure demo uses low-resolution rendering (default 4x4 block pixels) for speed and a chunkier visual style
 - Auto-start installers for node and main computers
 - Auto-update on reboot: startup checks GitHub and refreshes runtime files before launch
 
