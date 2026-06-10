@@ -186,18 +186,6 @@ local function min2(a, b)
   return b
 end
 
-local function reflectedPositions(pos, size)
-  local period = size * 2
-  return {
-    pos - period,
-    pos,
-    pos + period,
-    (period - pos + 1) - period,
-    (period - pos + 1),
-    (period - pos + 1) + period,
-  }
-end
-
 local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanelHeight)
   local liveCount = math.max(1, math.floor(msg.liveCount or 1))
   local canvasWidth = math.max(1, math.floor(msg.canvasWidth or localPanelWidth))
@@ -232,13 +220,13 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
           local localPulseWidth = math.max(0.9, pulseWidth)
           local trailWidth = localPulseWidth * (2.5 + trailDamping * 4)
           local maxReach = radius + math.max(DEFAULT_RIPPLE_MAX_DISTANCE, trailWidth)
-          local xImages = reflectedPositions(sx, canvasWidth)
-          local yImages = reflectedPositions(sy, canvasHeight)
+          local mx = (2 * canvasWidth - sx + 1)
+          local my = (2 * canvasHeight - sy + 1)
           sources[#sources + 1] = {
             sx = sx,
             sy = sy,
-            xImages = xImages,
-            yImages = yImages,
+            mx = mx,
+            my = my,
             radius = radius,
             ampAge = ampAge,
             impactAge = (ampAge * impactStrength) / (1 + age * impactDecay * 2),
@@ -275,43 +263,42 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
 
       for i = 1, #sources do
         local s = sources[i]
-        local bestD2 = 1e30
-        for xi = 1, #s.xImages do
-          local dx = gx - s.xImages[xi]
-          local dx2 = dx * dx
-          if dx2 <= s.maxReach2 then
-            for yi = 1, #s.yImages do
-              local dy = gy - s.yImages[yi]
-              local d2 = dx2 + dy * dy
-              if d2 < bestD2 then
-                bestD2 = d2
-              end
+        local contributions = {
+          { s.sx, s.sy, 1.00 },
+          { s.mx, s.sy, 0.88 },
+          { s.sx, s.my, 0.88 },
+          { s.mx, s.my, 0.76 },
+        }
+
+        for c = 1, #contributions do
+          local cx = contributions[c][1]
+          local cy = contributions[c][2]
+          local reflectScale = contributions[c][3]
+          local dx = gx - cx
+          local dy = gy - cy
+          local d2 = dx * dx + dy * dy
+          if d2 <= s.maxReach2 then
+            local d = math.sqrt(d2)
+            local delta = d - s.radius
+            local ad = math.abs(delta)
+            local core = 0
+            if ad < s.pulseWidth then
+              core = 1 - (ad / s.pulseWidth)
             end
-          end
-        end
 
-        local d2 = bestD2
-        if d2 <= s.maxReach2 then
-          local d = math.sqrt(d2)
-          local delta = d - s.radius
-          local ad = math.abs(delta)
-          local core = 0
-          if ad < s.pulseWidth then
-            core = 1 - (ad / s.pulseWidth)
-          end
+            local ring = 0
+            if ad < s.trailWidth then
+              local env = 1 - (ad / s.trailWidth)
+              ring = math.cos(delta * 0.72) * env
+            end
 
-          local ring = 0
-          if ad < s.trailWidth then
-            local env = 1 - (ad / s.trailWidth)
-            ring = math.cos(delta * 0.72) * env
-          end
+            local impact = 0
+            if d2 < 49 then
+              impact = s.impactAge / (1 + d2 * 0.22)
+            end
 
-          local impact = 0
-          if d2 < 49 then
-            impact = s.impactAge / (1 + d2 * 0.22)
+            pressure = pressure + reflectScale * (s.ampAge * (1.1 * core + 0.75 * ring) + impact)
           end
-
-          pressure = pressure + s.ampAge * (1.1 * core + 0.75 * ring) + impact
         end
       end
 
