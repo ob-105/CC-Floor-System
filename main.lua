@@ -56,6 +56,14 @@ local function activeNodes()
   return result
 end
 
+local function getPanelDimensions()
+  local live = activeNodes()
+  if #live > 0 then
+    return live[1].panelWidth or common.DEFAULT_PANEL_WIDTH, live[1].panelHeight or common.DEFAULT_PANEL_HEIGHT
+  end
+  return common.DEFAULT_PANEL_WIDTH, common.DEFAULT_PANEL_HEIGHT
+end
+
 local function ensureAssignments()
   local live = activeNodes()
   for i, node in ipairs(live) do
@@ -336,8 +344,11 @@ local function renderStatus()
   term.setTextColor(colors.cyan)
   print("CC Floor System - Main Controller")
   term.setTextColor(colors.lightGray)
-  print("Nodes online: " .. tostring(#activeNodes()) .. " / " .. tostring(common.MAX_NODES))
-  print("Canvas: " .. tostring(common.totalWidth()) .. " x " .. tostring(common.totalHeight(#activeNodes())))
+  local live = activeNodes()
+  local panelWidth, panelHeight = getPanelDimensions()
+  print("Nodes online: " .. tostring(#live) .. " / " .. tostring(common.MAX_NODES))
+  print("Panel chars per side: " .. tostring(panelWidth) .. " x " .. tostring(panelHeight))
+  print("Canvas chars: " .. tostring(common.totalWidth(panelWidth)) .. " x " .. tostring(common.totalHeight(panelHeight, #live)))
   print("")
   print("Demos (press key):")
   for i, key in ipairs(demoOrder) do
@@ -348,15 +359,15 @@ local function renderStatus()
   print("Keys: 1.." .. tostring(#demoOrder) .. " switch demo, R rediscover")
 end
 
-local function splitRowsForNode(globalRows, stackIndex)
+local function splitRowsForNode(globalRows, stackIndex, panelWidth, panelHeight)
   local rowsBySlot = {}
   for slot = 1, common.MONITORS_PER_NODE do
     rowsBySlot[slot] = {}
-    local x0 = (slot - 1) * common.MONITOR_WIDTH + 1
-    local x1 = x0 + common.MONITOR_WIDTH - 1
+    local x0 = (slot - 1) * panelWidth + 1
+    local x1 = x0 + panelWidth - 1
 
-    for localY = 1, common.MONITOR_HEIGHT do
-      local gy = (stackIndex - 1) * common.MONITOR_HEIGHT + localY
+    for localY = 1, panelHeight do
+      local gy = (stackIndex - 1) * panelHeight + localY
       local row = globalRows[gy]
 
       rowsBySlot[slot][localY] = {
@@ -372,9 +383,11 @@ end
 
 local function broadcastFrame(globalRows)
   for _, node in ipairs(activeNodes()) do
+    local panelWidth = node.panelWidth or common.DEFAULT_PANEL_WIDTH
+    local panelHeight = node.panelHeight or common.DEFAULT_PANEL_HEIGHT
     rednet.send(node.id, {
       kind = "frame",
-      rowsBySlot = splitRowsForNode(globalRows, node.stackIndex),
+      rowsBySlot = splitRowsForNode(globalRows, node.stackIndex, panelWidth, panelHeight),
     }, common.PROTOCOL)
   end
 end
@@ -391,6 +404,8 @@ local function handleNodeMessage(sender, msg)
     n.label = msg.label
     n.hostname = msg.hostname
     n.stackIndex = math.max(1, math.floor(msg.stackIndex or 1))
+    n.panelWidth = math.max(1, math.floor(msg.panelWidth or common.DEFAULT_PANEL_WIDTH))
+    n.panelHeight = math.max(1, math.floor(msg.panelHeight or common.DEFAULT_PANEL_HEIGHT))
     n.lastSeen = now()
     ensureAssignments()
   elseif msg.kind == "heartbeat" then
@@ -405,8 +420,9 @@ local function handleNodeMessage(sender, msg)
     local x = msg.gx
     local y = msg.gy
     local liveCount = #activeNodes()
-    local w = common.totalWidth()
-    local h = common.totalHeight(liveCount)
+    local panelWidth, panelHeight = getPanelDimensions()
+    local w = common.totalWidth(panelWidth)
+    local h = common.totalHeight(panelHeight, liveCount)
     if type(x) == "number" and type(y) == "number" and x >= 1 and x <= w and y >= 1 and y <= h then
       local demo = demos[demoOrder[currentDemo]]
       demo.onTouch(demo, x, y, w, h)
@@ -430,8 +446,9 @@ while true do
     ensureAssignments()
 
     local liveCount = #activeNodes()
-    local w = common.totalWidth()
-    local h = common.totalHeight(liveCount)
+    local panelWidth, panelHeight = getPanelDimensions()
+    local w = common.totalWidth(panelWidth)
+    local h = common.totalHeight(panelHeight, liveCount)
 
     local frameNow = now()
     local dt = frameNow - lastFrameTime

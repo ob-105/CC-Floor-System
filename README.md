@@ -2,11 +2,13 @@
 
 A stackable ComputerCraft Tweaked monitor wall with one main controller computer and up to 20 node computers.
 
-Each node controls 4 advanced monitors (6x7 each) mapped as logical slots:
+Each node controls 4 advanced monitor walls mapped as logical slots:
 - front
 - left
 - back
 - right
+
+Important: your "6x7" is treated as monitor blocks, not pixels/characters. The runtime uses each wall's real character size from `monitor.getSize()` automatically.
 
 These monitors can be local or remote peripherals reachable over the wired modem cable network.
 

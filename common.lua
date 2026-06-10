@@ -2,8 +2,8 @@
 local common = {}
 
 common.PROTOCOL = "cc_floor_system_v1"
-common.MONITOR_WIDTH = 6
-common.MONITOR_HEIGHT = 7
+common.DEFAULT_PANEL_WIDTH = 6
+common.DEFAULT_PANEL_HEIGHT = 7
 common.MONITORS_PER_NODE = 4
 common.MAX_NODES = 20
 
@@ -14,12 +14,14 @@ common.MONITOR_SIDES = {
   "right",
 }
 
-function common.totalWidth()
-  return common.MONITOR_WIDTH * common.MONITORS_PER_NODE
+function common.totalWidth(panelWidth)
+  local w = tonumber(panelWidth) or common.DEFAULT_PANEL_WIDTH
+  return w * common.MONITORS_PER_NODE
 end
 
-function common.totalHeight(nodeCount)
-  return common.MONITOR_HEIGHT * math.max(nodeCount, 1)
+function common.totalHeight(panelHeight, nodeCount)
+  local h = tonumber(panelHeight) or common.DEFAULT_PANEL_HEIGHT
+  return h * math.max(nodeCount, 1)
 end
 
 function common.defaultNodeConfig()
@@ -59,26 +61,30 @@ function common.slotToSide(slot)
   return common.MONITOR_SIDES[slot]
 end
 
-function common.localToGlobal(slot, localX, localY, stackIndex)
-  local gx = (slot - 1) * common.MONITOR_WIDTH + localX
-  local gy = (stackIndex - 1) * common.MONITOR_HEIGHT + localY
+function common.localToGlobal(slot, localX, localY, stackIndex, panelWidth, panelHeight)
+  local w = tonumber(panelWidth) or common.DEFAULT_PANEL_WIDTH
+  local h = tonumber(panelHeight) or common.DEFAULT_PANEL_HEIGHT
+  local gx = (slot - 1) * w + localX
+  local gy = (stackIndex - 1) * h + localY
   return gx, gy
 end
 
-function common.globalToLocal(gx, gy, stackIndex)
-  local startY = (stackIndex - 1) * common.MONITOR_HEIGHT + 1
-  local endY = startY + common.MONITOR_HEIGHT - 1
+function common.globalToLocal(gx, gy, stackIndex, panelWidth, panelHeight)
+  local w = tonumber(panelWidth) or common.DEFAULT_PANEL_WIDTH
+  local h = tonumber(panelHeight) or common.DEFAULT_PANEL_HEIGHT
+  local startY = (stackIndex - 1) * h + 1
+  local endY = startY + h - 1
   if gy < startY or gy > endY then
     return nil
   end
 
-  local slot = math.floor((gx - 1) / common.MONITOR_WIDTH) + 1
+  local slot = math.floor((gx - 1) / w) + 1
   if slot < 1 or slot > common.MONITORS_PER_NODE then
     return nil
   end
 
-  local localX = gx - (slot - 1) * common.MONITOR_WIDTH
-  local localY = gy - (stackIndex - 1) * common.MONITOR_HEIGHT
+  local localX = gx - (slot - 1) * w
+  local localY = gy - (stackIndex - 1) * h
   return slot, localX, localY
 end
 

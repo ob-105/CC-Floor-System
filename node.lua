@@ -112,6 +112,8 @@ end
 local function setupMonitors(config)
   local monitors = {}
   local touchNameToSide = {}
+  local panelWidth = nil
+  local panelHeight = nil
 
   for _, side in ipairs(common.MONITOR_SIDES) do
     local mapped = config.monitorSides and config.monitorSides[side] or side
@@ -121,6 +123,13 @@ local function setupMonitors(config)
 
     local mon = peripheral.wrap(mapped)
     mon.setTextScale(0.5)
+    local w, h = mon.getSize()
+    if not panelWidth then
+      panelWidth = w
+      panelHeight = h
+    elseif panelWidth ~= w or panelHeight ~= h then
+      error("All 4 monitors must have same size. Mismatch at " .. tostring(mapped) .. ": " .. tostring(w) .. "x" .. tostring(h))
+    end
     mon.setBackgroundColor(colors.black)
     mon.clear()
     mon.setCursorPos(1, 1)
@@ -128,15 +137,15 @@ local function setupMonitors(config)
     touchNameToSide[mapped] = side
   end
 
-  return monitors, touchNameToSide
+  return monitors, touchNameToSide, panelWidth, panelHeight
 end
 
-local function drawMonitor(mon, rows)
+local function drawMonitor(mon, rows, panelHeight)
   if type(rows) ~= "table" then
     return
   end
 
-  for y = 1, common.MONITOR_HEIGHT do
+  for y = 1, panelHeight do
     local row = rows[y]
     if row then
       mon.setCursorPos(1, y)
@@ -168,7 +177,7 @@ if not complete then
       .. ")"
   )
 end
-local monitors, touchNameToSide = setupMonitors(config)
+local monitors, touchNameToSide, panelWidth, panelHeight = setupMonitors(config)
 
 local nodeId = os.getComputerID()
 local hostname = config.nodeName or ("floor-node-" .. tostring(nodeId))
@@ -182,8 +191,8 @@ local function sendHello(target)
     label = os.getComputerLabel(),
     hostname = hostname,
     stackIndex = config.stackIndex,
-    monitorWidth = common.MONITOR_WIDTH,
-    monitorHeight = common.MONITOR_HEIGHT,
+    panelWidth = panelWidth,
+    panelHeight = panelHeight,
     monitorsPerNode = common.MONITORS_PER_NODE,
   }, common.PROTOCOL)
 end
@@ -194,7 +203,7 @@ local function sendTouch(target, side, x, y)
     return
   end
 
-  local gx, gy = common.localToGlobal(slot, x, y, config.stackIndex)
+  local gx, gy = common.localToGlobal(slot, x, y, config.stackIndex, panelWidth, panelHeight)
   rednet.send(target, {
     kind = "touch",
     protocol = common.PROTOCOL,
@@ -204,6 +213,8 @@ local function sendTouch(target, side, x, y)
     slot = slot,
     x = x,
     y = y,
+    panelWidth = panelWidth,
+    panelHeight = panelHeight,
     gx = gx,
     gy = gy,
     timestamp = os.epoch("utc"),
@@ -256,7 +267,7 @@ while true do
             local side = common.slotToSide(slot)
             local mon = monitors[side]
             local rows = msg.rowsBySlot[slot]
-            drawMonitor(mon, rows)
+            drawMonitor(mon, rows, panelHeight)
           end
         end
       elseif msg.kind == "ping" then
