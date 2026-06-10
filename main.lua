@@ -5,7 +5,8 @@ local MIN_FRAME_SECONDS = 0.08
 local MAX_FRAME_SECONDS = 0.35
 local DISCOVER_SECONDS = 2.0
 local NODE_TIMEOUT_SECONDS = 8.0
-local MAX_RIPPLE_SOURCES = 10
+local MAX_RIPPLE_SOURCES = 6
+local RIPPLE_MAX_AGE = 5.5
 
 if not peripheral.isPresent(MODEM_SIDE) or peripheral.getType(MODEM_SIDE) ~= "modem" then
   error("Main computer needs a modem on side: " .. MODEM_SIDE)
@@ -99,6 +100,9 @@ end
 
 local function frameInterval(nodeCount, demoKey)
   local interval = MIN_FRAME_SECONDS + (math.max(nodeCount, 1) - 1) * 0.01
+  if demoKey == "ripple" then
+    interval = interval + 0.04
+  end
   if demoKey == "life" then
     interval = interval + 0.02
   end
@@ -188,7 +192,7 @@ demos.ripple = {
     local t = now()
     local keep = {}
     for _, s in ipairs(self.state.sources) do
-      if (t - s.t0) < 7 then
+      if (t - s.t0) < RIPPLE_MAX_AGE then
         keep[#keep + 1] = s
       end
     end
@@ -467,6 +471,8 @@ local function broadcastRippleState(live, panelWidth, panelHeight, sources)
     panelHeight = panelHeight,
     canvasWidth = common.totalWidth(panelWidth),
     canvasHeight = common.totalHeight(panelHeight, liveCount),
+    maxAge = RIPPLE_MAX_AGE,
+    maxSources = MAX_RIPPLE_SOURCES,
     sources = sources,
   }
 
@@ -482,7 +488,7 @@ local function getRippleSourcesForBroadcast()
   for i = 1, #state.sources do
     local s = state.sources[i]
     local age = t - s.t0
-    if age < 7 then
+    if age < RIPPLE_MAX_AGE then
       out[#out + 1] = {
         x = s.x,
         y = s.y,

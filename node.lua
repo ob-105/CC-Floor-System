@@ -177,6 +177,16 @@ local ripplePalette = {
   colors.lightBlue,
 }
 
+local RIPPLE_MAX_DISTANCE = 56
+local RIPPLE_MAX_DISTANCE2 = RIPPLE_MAX_DISTANCE * RIPPLE_MAX_DISTANCE
+
+local function min2(a, b)
+  if a < b then
+    return a
+  end
+  return b
+end
+
 local function reflectedDistance(x, y, sx, sy, w, h)
   local mirrorX = (2 * w - sx + 1)
   local mirrorY = (2 * h - sy + 1)
@@ -193,13 +203,49 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
   local liveCount = math.max(1, math.floor(msg.liveCount or 1))
   local canvasWidth = math.max(1, math.floor(msg.canvasWidth or localPanelWidth))
   local canvasHeight = math.max(1, math.floor(msg.canvasHeight or (localPanelHeight * liveCount)))
-  local sources = type(msg.sources) == "table" and msg.sources or {}
+  local maxAge = tonumber(msg.maxAge) or 5.5
+  local maxSources = math.max(1, math.floor(tonumber(msg.maxSources) or 6))
+  local src = type(msg.sources) == "table" and msg.sources or {}
+
+  local sources = {}
+  for i = 1, #src do
+    if #sources >= maxSources then
+      break
+    end
+
+    local s = src[i]
+    local age = tonumber(s.age) or 0
+    if age >= 0 and age < maxAge then
+      local sx = tonumber(s.x)
+      local sy = tonumber(s.y)
+      if sx and sy then
+        local ampAge = (tonumber(s.amp) or 1.0) * math.exp(-age * 0.22)
+        if ampAge > 0.0005 then
+          sources[#sources + 1] = {
+            sx = sx,
+            sy = sy,
+            mx = (2 * canvasWidth - sx + 1),
+            my = (2 * canvasHeight - sy + 1),
+            phase = -age * 5.2,
+            ampAge = ampAge,
+          }
+        end
+      end
+    end
+  end
 
   for localY = 1, localPanelHeight do
     local gy = (liveCount - stackIndex) * localPanelHeight + localY
     local textRow = {}
     local fgRow = {}
     local bgRow = {}
+    local dy2 = {}
+
+    for i = 1, #sources do
+      local s = sources[i]
+      local dy = min2(math.abs(gy - s.sy), math.abs(gy - s.my))
+      dy2[i] = dy * dy
+    end
 
     for localX = 1, localPanelWidth do
       local gx = localX
@@ -207,14 +253,14 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
 
       for i = 1, #sources do
         local s = sources[i]
-        local age = tonumber(s.age) or 0
-        local sx = tonumber(s.x) or gx
-        local sy = tonumber(s.y) or gy
-        local amp = tonumber(s.amp) or 1.0
-        local d = reflectedDistance(gx, gy, sx, sy, canvasWidth, canvasHeight)
-        local wave = math.sin(d * 1.12 - age * 5.2)
-        local decay = math.exp(-d * 0.08) * math.exp(-age * 0.22)
-        v = v + wave * decay * amp
+        local dx = min2(math.abs(gx - s.sx), math.abs(gx - s.mx))
+        local d2 = dx * dx + dy2[i]
+        if d2 <= RIPPLE_MAX_DISTANCE2 then
+          local d = math.sqrt(d2)
+          local wave = math.sin(d * 1.12 + s.phase)
+          local decay = math.exp(-d * 0.08)
+          v = v + wave * decay * s.ampAge
+        end
       end
 
       textRow[localX] = " "

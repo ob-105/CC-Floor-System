@@ -21,6 +21,7 @@ The node network uses wired modems on the **bottom** side for controller communi
   - Game of Life (touch cells to toggle)
   - Plasma
 - Distributed ripple rendering: each node computes its own ripple slice, so adding nodes increases total ripple compute capacity
+- Ripple demo includes adaptive quality limits (source count/age/distance) to keep performance stable on larger floors
 - Auto-start installers for node and main computers
 - Auto-update on reboot: startup checks GitHub and refreshes runtime files before launch
 
