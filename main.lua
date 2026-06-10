@@ -99,9 +99,7 @@ end
 
 local function frameInterval(nodeCount, demoKey)
   local interval = MIN_FRAME_SECONDS + (math.max(nodeCount, 1) - 1) * 0.01
-  if demoKey == "ripple" then
-    interval = interval + 0.03
-  elseif demoKey == "life" then
+  if demoKey == "life" then
     interval = interval + 0.02
   end
   if interval > MAX_FRAME_SECONDS then
@@ -460,6 +458,42 @@ local function broadcastFrame(globalRows)
   end
 end
 
+local function broadcastRippleState(live, panelWidth, panelHeight, sources)
+  local liveCount = #live
+  local payload = {
+    kind = "ripple_state",
+    liveCount = liveCount,
+    panelWidth = panelWidth,
+    panelHeight = panelHeight,
+    canvasWidth = common.totalWidth(panelWidth),
+    canvasHeight = common.totalHeight(panelHeight, liveCount),
+    sources = sources,
+  }
+
+  for _, node in ipairs(live) do
+    rednet.send(node.id, payload, common.PROTOCOL)
+  end
+end
+
+local function getRippleSourcesForBroadcast()
+  local state = demos.ripple.state
+  local t = now()
+  local out = {}
+  for i = 1, #state.sources do
+    local s = state.sources[i]
+    local age = t - s.t0
+    if age < 7 then
+      out[#out + 1] = {
+        x = s.x,
+        y = s.y,
+        age = age,
+        amp = s.amp,
+      }
+    end
+  end
+  return out
+end
+
 local function handleNodeMessage(sender, msg)
   if type(msg) ~= "table" then
     return
@@ -518,7 +552,8 @@ while true do
   if event == "timer" and p1 == tickTimer then
     ensureAssignments()
 
-    local liveCount = #activeNodes()
+    local live = activeNodes()
+    local liveCount = #live
     local panelWidth, panelHeight = getPanelDimensions()
     local w = common.totalWidth(panelWidth)
     local h = common.totalHeight(panelHeight, liveCount)
@@ -527,15 +562,21 @@ while true do
     local dt = frameNow - lastFrameTime
     lastFrameTime = frameNow
 
-    local buf = makeBuffer(w, h)
-    local demo = demos[demoOrder[currentDemo]]
+    local demoKey = demoOrder[currentDemo]
+    local demo = demos[demoKey]
     demo.update(demo, dt, w, h)
-    demo.render(demo, buf, w, h)
 
-    local rows = bufferToRows(buf, w, h)
-    broadcastFrame(rows)
+    if demoKey == "ripple" then
+      local sources = getRippleSourcesForBroadcast()
+      broadcastRippleState(live, panelWidth, panelHeight, sources)
+    else
+      local buf = makeBuffer(w, h)
+      demo.render(demo, buf, w, h)
+      local rows = bufferToRows(buf, w, h)
+      broadcastFrame(rows)
+    end
 
-    tickTimer = os.startTimer(frameInterval(liveCount, demoOrder[currentDemo]))
+    tickTimer = os.startTimer(frameInterval(liveCount, demoKey))
   elseif event == "timer" and p1 == discoverTimer then
     discover()
     discoverTimer = os.startTimer(DISCOVER_SECONDS)

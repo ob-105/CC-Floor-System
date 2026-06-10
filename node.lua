@@ -154,6 +154,80 @@ local function drawMonitor(mon, rows, panelHeight)
   end
 end
 
+local function clamp(v, lo, hi)
+  if v < lo then return lo end
+  if v > hi then return hi end
+  return v
+end
+
+local function chooseColor(value, palette)
+  local idx = math.floor(clamp(value, 0, 0.9999) * #palette) + 1
+  return palette[idx]
+end
+
+local ripplePalette = {
+  colors.black,
+  colors.gray,
+  colors.lightBlue,
+  colors.cyan,
+  colors.blue,
+  colors.purple,
+  colors.blue,
+  colors.cyan,
+  colors.lightBlue,
+}
+
+local function reflectedDistance(x, y, sx, sy, w, h)
+  local mirrorX = (2 * w - sx + 1)
+  local mirrorY = (2 * h - sy + 1)
+  local dxA = math.abs(x - sx)
+  local dxB = math.abs(x - mirrorX)
+  local dyA = math.abs(y - sy)
+  local dyB = math.abs(y - mirrorY)
+  local dx = math.min(dxA, dxB)
+  local dy = math.min(dyA, dyB)
+  return math.sqrt(dx * dx + dy * dy)
+end
+
+local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanelHeight)
+  local liveCount = math.max(1, math.floor(msg.liveCount or 1))
+  local canvasWidth = math.max(1, math.floor(msg.canvasWidth or localPanelWidth))
+  local canvasHeight = math.max(1, math.floor(msg.canvasHeight or (localPanelHeight * liveCount)))
+  local sources = type(msg.sources) == "table" and msg.sources or {}
+
+  for localY = 1, localPanelHeight do
+    local gy = (liveCount - stackIndex) * localPanelHeight + localY
+    local textRow = {}
+    local fgRow = {}
+    local bgRow = {}
+
+    for localX = 1, localPanelWidth do
+      local gx = localX
+      local v = 0.08
+
+      for i = 1, #sources do
+        local s = sources[i]
+        local age = tonumber(s.age) or 0
+        local sx = tonumber(s.x) or gx
+        local sy = tonumber(s.y) or gy
+        local amp = tonumber(s.amp) or 1.0
+        local d = reflectedDistance(gx, gy, sx, sy, canvasWidth, canvasHeight)
+        local wave = math.sin(d * 1.12 - age * 5.2)
+        local decay = math.exp(-d * 0.08) * math.exp(-age * 0.22)
+        v = v + wave * decay * amp
+      end
+
+      textRow[localX] = " "
+      fgRow[localX] = "f"
+      local normalized = clamp((v + 1.15) / 2.3, 0, 1)
+      bgRow[localX] = colors.toBlit(chooseColor(normalized, ripplePalette))
+    end
+
+    mon.setCursorPos(1, localY)
+    mon.blit(table.concat(textRow), table.concat(fgRow), table.concat(bgRow))
+  end
+end
+
 local function clearAll(monitors)
   for _, side in ipairs(common.MONITOR_SIDES) do
     local mon = monitors[side]
@@ -269,6 +343,13 @@ while true do
             local rows = msg.rowsBySlot[slot]
             drawMonitor(mon, rows, panelHeight)
           end
+        end
+      elseif msg.kind == "ripple_state" then
+        controllerId = sender
+        local side = common.slotToSide(1)
+        local mon = monitors[side]
+        if mon then
+          drawRippleState(mon, msg, config.stackIndex, panelWidth, panelHeight)
         end
       elseif msg.kind == "ping" then
         sendHello(sender)

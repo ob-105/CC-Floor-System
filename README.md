@@ -20,6 +20,7 @@ The node network uses wired modems on the **bottom** side for controller communi
   - Ripple (touch to spawn bouncing waves)
   - Game of Life (touch cells to toggle)
   - Plasma
+- Distributed ripple rendering: each node computes its own ripple slice, so adding nodes increases total ripple compute capacity
 - Auto-start installers for node and main computers
 
 ## Wiring
