@@ -1,9 +1,11 @@
 local common = require("common")
 
 local MODEM_SIDE = "bottom"
-local FRAME_SECONDS = 0.08
+local MIN_FRAME_SECONDS = 0.08
+local MAX_FRAME_SECONDS = 0.35
 local DISCOVER_SECONDS = 2.0
 local NODE_TIMEOUT_SECONDS = 8.0
+local MAX_RIPPLE_SOURCES = 10
 
 if not peripheral.isPresent(MODEM_SIDE) or peripheral.getType(MODEM_SIDE) ~= "modem" then
   error("Main computer needs a modem on side: " .. MODEM_SIDE)
@@ -95,6 +97,19 @@ local function discover()
   rednet.broadcast({ kind = "discover" }, common.PROTOCOL)
 end
 
+local function frameInterval(nodeCount, demoKey)
+  local interval = MIN_FRAME_SECONDS + (math.max(nodeCount, 1) - 1) * 0.01
+  if demoKey == "ripple" then
+    interval = interval + 0.03
+  elseif demoKey == "life" then
+    interval = interval + 0.02
+  end
+  if interval > MAX_FRAME_SECONDS then
+    interval = MAX_FRAME_SECONDS
+  end
+  return interval
+end
+
 local demos = {}
 
 local function makeBuffer(width, height)
@@ -145,40 +160,25 @@ local ripplePalette = {
   colors.lightBlue,
 }
 
-local function reflectedPositions(pos, size)
-  local list = {}
-  local period = size * 2
-  for k = -1, 1 do
-    local base = pos + k * period
-    list[#list + 1] = base
-    list[#list + 1] = (period - pos + 1) + k * period
-  end
-  return list
-end
-
 local function reflectedDistance(x, y, sx, sy, w, h)
-  local minD = 1e9
-  local xs = reflectedPositions(sx, w)
-  local ys = reflectedPositions(sy, h)
-
-  for _, ix in ipairs(xs) do
-    for _, iy in ipairs(ys) do
-      local dx = x - ix
-      local dy = y - iy
-      local d = math.sqrt(dx * dx + dy * dy)
-      if d < minD then
-        minD = d
-      end
-    end
-  end
-
-  return minD
+  local mirrorX = (2 * w - sx + 1)
+  local mirrorY = (2 * h - sy + 1)
+  local dxA = math.abs(x - sx)
+  local dxB = math.abs(x - mirrorX)
+  local dyA = math.abs(y - sy)
+  local dyB = math.abs(y - mirrorY)
+  local dx = math.min(dxA, dxB)
+  local dy = math.min(dyA, dyB)
+  return math.sqrt(dx * dx + dy * dy)
 end
 
 demos.ripple = {
   name = "Ripple",
   state = { sources = {} },
   onTouch = function(self, x, y, _w, _h)
+    if #self.state.sources >= MAX_RIPPLE_SOURCES then
+      table.remove(self.state.sources, 1)
+    end
     self.state.sources[#self.state.sources + 1] = {
       x = x,
       y = y,
@@ -507,7 +507,7 @@ math.randomseed(os.epoch("utc"))
 renderStatus()
 discover()
 
-local tickTimer = os.startTimer(FRAME_SECONDS)
+local tickTimer = os.startTimer(frameInterval(#activeNodes(), demoOrder[currentDemo]))
 local discoverTimer = os.startTimer(DISCOVER_SECONDS)
 local statusTimer = os.startTimer(1)
 local lastFrameTime = now()
@@ -535,7 +535,7 @@ while true do
     local rows = bufferToRows(buf, w, h)
     broadcastFrame(rows)
 
-    tickTimer = os.startTimer(FRAME_SECONDS)
+    tickTimer = os.startTimer(frameInterval(liveCount, demoOrder[currentDemo]))
   elseif event == "timer" and p1 == discoverTimer then
     discover()
     discoverTimer = os.startTimer(DISCOVER_SECONDS)
