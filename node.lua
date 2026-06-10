@@ -44,6 +44,71 @@ local function ensureRednet(modemSide)
   end
 end
 
+local function listMonitorNames()
+  local names = peripheral.getNames()
+  local monitors = {}
+  for _, name in ipairs(names) do
+    if peripheral.getType(name) == "monitor" then
+      monitors[#monitors + 1] = name
+    end
+  end
+  table.sort(monitors)
+  return monitors
+end
+
+local function isMonitorName(name)
+  return type(name) == "string"
+    and peripheral.isPresent(name)
+    and peripheral.getType(name) == "monitor"
+end
+
+local function normalizeMonitorSides(config)
+  config.monitorSides = config.monitorSides or {}
+
+  local available = listMonitorNames()
+  local used = {}
+  local changed = false
+
+  -- Keep valid existing mappings first.
+  for _, side in ipairs(common.MONITOR_SIDES) do
+    local mapped = config.monitorSides[side]
+    if isMonitorName(mapped) and not used[mapped] then
+      used[mapped] = true
+    else
+      if mapped ~= nil then
+        changed = true
+      end
+      config.monitorSides[side] = nil
+    end
+  end
+
+  -- Fill any missing logical sides with remaining monitors.
+  local i = 1
+  for _, side in ipairs(common.MONITOR_SIDES) do
+    if not config.monitorSides[side] then
+      while i <= #available and used[available[i]] do
+        i = i + 1
+      end
+      if i <= #available then
+        config.monitorSides[side] = available[i]
+        used[available[i]] = true
+        changed = true
+        i = i + 1
+      end
+    end
+  end
+
+  local complete = true
+  for _, side in ipairs(common.MONITOR_SIDES) do
+    if not isMonitorName(config.monitorSides[side]) then
+      complete = false
+      break
+    end
+  end
+
+  return changed, complete, available
+end
+
 local function setupMonitors(config)
   local monitors = {}
   local touchNameToSide = {}
@@ -90,6 +155,19 @@ end
 
 local config = loadConfig()
 ensureRednet(config.modemSide)
+local changed, complete, available = normalizeMonitorSides(config)
+if changed then
+  saveConfig(config)
+end
+if not complete then
+  error(
+    "Could not map 4 monitors. Found: "
+      .. tostring(#available)
+      .. " ("
+      .. table.concat(available, ", ")
+      .. ")"
+  )
+end
 local monitors, touchNameToSide = setupMonitors(config)
 
 local nodeId = os.getComputerID()
