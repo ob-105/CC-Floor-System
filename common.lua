@@ -7,14 +7,11 @@ common.DEFAULT_PANEL_HEIGHT = 7
 -- Backwards compatibility for older scripts that still reference these names.
 common.MONITOR_WIDTH = common.DEFAULT_PANEL_WIDTH
 common.MONITOR_HEIGHT = common.DEFAULT_PANEL_HEIGHT
-common.MONITORS_PER_NODE = 4
+common.MONITORS_PER_NODE = 1
 common.MAX_NODES = 20
 
 common.MONITOR_SIDES = {
-  "front",
-  "left",
-  "back",
-  "right",
+  "top",
 }
 
 function common.totalWidth(panelWidth)
@@ -41,10 +38,7 @@ function common.defaultNodeConfig()
     stackIndex = 1,
     nodeName = nil,
     monitorSides = {
-      front = "front",
-      left = "left",
-      back = "back",
-      right = "right",
+      top = "top",
     },
   }
 end

@@ -78,28 +78,22 @@ end
 
 print("CC Floor System - Node Installer")
 print("This computer should have:")
-print("- access to at least 4 advanced monitors")
+print("- 1 advanced monitor on top (or reachable via wired modem network)")
 print("- 1 wired modem on bottom")
 print("")
 
 local stackIndex = askNumber("Stack index for this node [1]: ", 1)
 local monitors = detectMonitors()
-if #monitors < 4 then
-  error("Found " .. tostring(#monitors) .. " monitor peripherals. Need at least 4.")
+if #monitors < 1 then
+  error("Found 0 monitor peripherals. Need at least 1.")
 end
 
 local monitorSides = {
-  front = monitors[1],
-  left = monitors[2],
-  back = monitors[3],
-  right = monitors[4],
+  top = (peripheral.isPresent("top") and peripheral.getType("top") == "monitor") and "top" or monitors[1],
 }
 
 print("Using monitor mapping:")
-print("front -> " .. monitorSides.front)
-print("left  -> " .. monitorSides.left)
-print("back  -> " .. monitorSides.back)
-print("right -> " .. monitorSides.right)
+print("top -> " .. monitorSides.top)
 
 download("common.lua")
 download("node.lua")

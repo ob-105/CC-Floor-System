@@ -128,7 +128,7 @@ local function setupMonitors(config)
       panelWidth = w
       panelHeight = h
     elseif panelWidth ~= w or panelHeight ~= h then
-      error("All 4 monitors must have same size. Mismatch at " .. tostring(mapped) .. ": " .. tostring(w) .. "x" .. tostring(h))
+      error("All mapped monitors must have same size. Mismatch at " .. tostring(mapped) .. ": " .. tostring(w) .. "x" .. tostring(h))
     end
     mon.setBackgroundColor(colors.black)
     mon.clear()
@@ -170,7 +170,7 @@ if changed then
 end
 if not complete then
   error(
-    "Could not map 4 monitors. Found: "
+    "Could not map required monitor(s). Found: "
       .. tostring(#available)
       .. " ("
       .. table.concat(available, ", ")
