@@ -220,13 +220,17 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
           local localPulseWidth = math.max(0.9, pulseWidth)
           local trailWidth = localPulseWidth * (2.5 + trailDamping * 4)
           local maxReach = radius + math.max(DEFAULT_RIPPLE_MAX_DISTANCE, trailWidth)
-          local mx = (2 * canvasWidth - sx + 1)
-          local my = (2 * canvasHeight - sy + 1)
+          local lx = (2 - sx)
+          local rx = (2 * canvasWidth - sx)
+          local ty = (2 - sy)
+          local by = (2 * canvasHeight - sy)
           sources[#sources + 1] = {
             sx = sx,
             sy = sy,
-            mx = mx,
-            my = my,
+            lx = lx,
+            rx = rx,
+            ty = ty,
+            by = by,
             radius = radius,
             ampAge = ampAge,
             impactAge = (ampAge * impactStrength) / (1 + age * impactDecay * 2),
@@ -265,9 +269,14 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
         local s = sources[i]
         local contributions = {
           { s.sx, s.sy, 1.00 },
-          { s.mx, s.sy, 0.88 },
-          { s.sx, s.my, 0.88 },
-          { s.mx, s.my, 0.76 },
+          { s.lx, s.sy, 0.88 },
+          { s.rx, s.sy, 0.88 },
+          { s.sx, s.ty, 0.88 },
+          { s.sx, s.by, 0.88 },
+          { s.lx, s.ty, 0.76 },
+          { s.lx, s.by, 0.76 },
+          { s.rx, s.ty, 0.76 },
+          { s.rx, s.by, 0.76 },
         }
 
         for c = 1, #contributions do
