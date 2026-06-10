@@ -177,8 +177,7 @@ local ripplePalette = {
   colors.lightBlue,
 }
 
-local RIPPLE_MAX_DISTANCE = 56
-local RIPPLE_MAX_DISTANCE2 = RIPPLE_MAX_DISTANCE * RIPPLE_MAX_DISTANCE
+local DEFAULT_RIPPLE_MAX_DISTANCE = 56
 
 local function min2(a, b)
   if a < b then
@@ -205,6 +204,14 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
   local canvasHeight = math.max(1, math.floor(msg.canvasHeight or (localPanelHeight * liveCount)))
   local maxAge = tonumber(msg.maxAge) or 5.5
   local maxSources = math.max(1, math.floor(tonumber(msg.maxSources) or 6))
+  local waveSpeed = tonumber(msg.waveSpeed) or 3.2
+  local damping = tonumber(msg.damping) or 0.28
+  local pulseWidth = tonumber(msg.pulseWidth) or 2.8
+  local freq = tonumber(msg.freq) or 0.9
+  local trailDamping = tonumber(msg.trailDamping) or 0.18
+  local impactDecay = tonumber(msg.impactDecay) or 1.4
+  local impactStrength = tonumber(msg.impactStrength) or 1.8
+  local sigma2Inv = 1 / math.max(0.01, (2 * pulseWidth * pulseWidth))
   local src = type(msg.sources) == "table" and msg.sources or {}
 
   local sources = {}
@@ -219,15 +226,21 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
       local sx = tonumber(s.x)
       local sy = tonumber(s.y)
       if sx and sy then
-        local ampAge = (tonumber(s.amp) or 1.0) * math.exp(-age * 0.22)
+        local ampAge = (tonumber(s.amp) or 1.0) * math.exp(-age * damping)
         if ampAge > 0.0005 then
+          local vel = tonumber(s.vel) or 1.0
+          local radius = age * waveSpeed * vel
+          local maxReach = radius + DEFAULT_RIPPLE_MAX_DISTANCE
           sources[#sources + 1] = {
             sx = sx,
             sy = sy,
             mx = (2 * canvasWidth - sx + 1),
             my = (2 * canvasHeight - sy + 1),
-            phase = -age * 5.2,
+            phase = -age * 2.2,
+            radius = radius,
             ampAge = ampAge,
+            impactAge = ampAge * impactStrength * math.exp(-age * impactDecay),
+            maxReach2 = maxReach * maxReach,
           }
         end
       end
@@ -255,17 +268,22 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
         local s = sources[i]
         local dx = min2(math.abs(gx - s.sx), math.abs(gx - s.mx))
         local d2 = dx * dx + dy2[i]
-        if d2 <= RIPPLE_MAX_DISTANCE2 then
+        if d2 <= s.maxReach2 then
           local d = math.sqrt(d2)
-          local wave = math.sin(d * 1.12 + s.phase)
-          local decay = math.exp(-d * 0.08)
-          v = v + wave * decay * s.ampAge
+          local delta = d - s.radius
+          local pulse = math.exp(-(delta * delta) * sigma2Inv)
+          local wave = math.sin(delta * freq + s.phase) * math.exp(-math.abs(delta) * trailDamping)
+          local impact = 0
+          if d2 < 100 then
+            impact = s.impactAge * math.exp(-d2 * 0.35)
+          end
+          v = v + s.ampAge * (pulse + 0.35 * wave) + impact
         end
       end
 
       textRow[localX] = " "
       fgRow[localX] = "f"
-      local normalized = clamp((v + 1.15) / 2.3, 0, 1)
+      local normalized = clamp((v + 1.8) / 3.6, 0, 1)
       bgRow[localX] = colors.toBlit(chooseColor(normalized, ripplePalette))
     end
 

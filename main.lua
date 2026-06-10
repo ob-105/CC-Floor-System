@@ -5,8 +5,15 @@ local MIN_FRAME_SECONDS = 0.08
 local MAX_FRAME_SECONDS = 0.35
 local DISCOVER_SECONDS = 2.0
 local NODE_TIMEOUT_SECONDS = 8.0
-local MAX_RIPPLE_SOURCES = 6
-local RIPPLE_MAX_AGE = 5.5
+local MAX_RIPPLE_SOURCES = 12
+local RIPPLE_MAX_AGE = 9.0
+local RIPPLE_WAVE_SPEED = 3.2
+local RIPPLE_DAMPING = 0.28
+local RIPPLE_PULSE_WIDTH = 2.8
+local RIPPLE_FREQ = 0.9
+local RIPPLE_TRAIL_DAMPING = 0.18
+local RIPPLE_IMPACT_DECAY = 1.4
+local RIPPLE_IMPACT_STRENGTH = 1.8
 
 if not peripheral.isPresent(MODEM_SIDE) or peripheral.getType(MODEM_SIDE) ~= "modem" then
   error("Main computer needs a modem on side: " .. MODEM_SIDE)
@@ -185,7 +192,8 @@ demos.ripple = {
       x = x,
       y = y,
       t0 = now(),
-      amp = 1.0,
+      amp = 1.25,
+      vel = 1.0,
     }
   end,
   update = function(self, _dt, _w, _h)
@@ -473,6 +481,13 @@ local function broadcastRippleState(live, panelWidth, panelHeight, sources)
     canvasHeight = common.totalHeight(panelHeight, liveCount),
     maxAge = RIPPLE_MAX_AGE,
     maxSources = MAX_RIPPLE_SOURCES,
+    waveSpeed = RIPPLE_WAVE_SPEED,
+    damping = RIPPLE_DAMPING,
+    pulseWidth = RIPPLE_PULSE_WIDTH,
+    freq = RIPPLE_FREQ,
+    trailDamping = RIPPLE_TRAIL_DAMPING,
+    impactDecay = RIPPLE_IMPACT_DECAY,
+    impactStrength = RIPPLE_IMPACT_STRENGTH,
     sources = sources,
   }
 
@@ -494,6 +509,7 @@ local function getRippleSourcesForBroadcast()
         y = s.y,
         age = age,
         amp = s.amp,
+        vel = s.vel,
       }
     end
   end
