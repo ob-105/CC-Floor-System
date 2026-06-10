@@ -43,6 +43,8 @@ wget run https://raw.githubusercontent.com/ob-105/CC-Floor-System/main/install_n
 
 The installer asks for stack index (1..20), picks one monitor peripheral (prefers `top`), writes `node_config.lua`, downloads runtime files, and creates `/startup` to run `node.lua` automatically.
 
+Stack index convention: `1` is the bottom monitor, `2` is above it, etc.
+
 ### Main installer
 
 ```lua

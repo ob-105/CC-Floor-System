@@ -66,8 +66,21 @@ end
 
 local function ensureAssignments()
   local live = activeNodes()
-  for i, node in ipairs(live) do
-    local target = i
+  local used = {}
+  local maxIndex = math.max(1, #live)
+
+  -- Preserve node-provided stack indices when unique. Resolve only collisions.
+  for _, node in ipairs(live) do
+    local target = math.max(1, math.floor(node.stackIndex or 1))
+    if target > maxIndex or used[target] then
+      local fallback = 1
+      while fallback <= maxIndex and used[fallback] do
+        fallback = fallback + 1
+      end
+      target = fallback
+    end
+
+    used[target] = true
     if node.stackIndex ~= target then
       node.stackIndex = target
       rednet.send(node.id, {
@@ -357,9 +370,10 @@ local function renderStatus()
   end
   print("")
   print("Keys: 1.." .. tostring(#demoOrder) .. " switch demo, R rediscover")
+  print("Stack convention: 1 = bottom, higher numbers go upward")
 end
 
-local function splitRowsForNode(globalRows, stackIndex, panelWidth, panelHeight)
+local function splitRowsForNode(globalRows, stackIndex, panelWidth, panelHeight, liveCount)
   local rowsBySlot = {}
   for slot = 1, common.MONITORS_PER_NODE do
     rowsBySlot[slot] = {}
@@ -367,7 +381,7 @@ local function splitRowsForNode(globalRows, stackIndex, panelWidth, panelHeight)
     local x1 = x0 + panelWidth - 1
 
     for localY = 1, panelHeight do
-      local gy = (stackIndex - 1) * panelHeight + localY
+      local gy = (liveCount - stackIndex) * panelHeight + localY
       local row = globalRows[gy]
 
       rowsBySlot[slot][localY] = {
@@ -382,12 +396,14 @@ local function splitRowsForNode(globalRows, stackIndex, panelWidth, panelHeight)
 end
 
 local function broadcastFrame(globalRows)
-  for _, node in ipairs(activeNodes()) do
+  local live = activeNodes()
+  local liveCount = #live
+  for _, node in ipairs(live) do
     local panelWidth = node.panelWidth or common.DEFAULT_PANEL_WIDTH
     local panelHeight = node.panelHeight or common.DEFAULT_PANEL_HEIGHT
     rednet.send(node.id, {
       kind = "frame",
-      rowsBySlot = splitRowsForNode(globalRows, node.stackIndex, panelWidth, panelHeight),
+      rowsBySlot = splitRowsForNode(globalRows, node.stackIndex, panelWidth, panelHeight, liveCount),
     }, common.PROTOCOL)
   end
 end
@@ -417,12 +433,17 @@ local function handleNodeMessage(sender, msg)
       nodes[sender].lastSeen = now()
     end
 
-    local x = msg.gx
-    local y = msg.gy
     local liveCount = #activeNodes()
     local panelWidth, panelHeight = getPanelDimensions()
     local w = common.totalWidth(panelWidth)
     local h = common.totalHeight(panelHeight, liveCount)
+
+    local slot = math.max(1, math.floor(msg.slot or 1))
+    local localX = math.max(1, math.floor(msg.x or 1))
+    local localY = math.max(1, math.floor(msg.y or 1))
+    local x = (slot - 1) * panelWidth + localX
+    local y = (liveCount - nodes[sender].stackIndex) * panelHeight + localY
+
     if type(x) == "number" and type(y) == "number" and x >= 1 and x <= w and y >= 1 and y <= h then
       local demo = demos[demoOrder[currentDemo]]
       demo.onTouch(demo, x, y, w, h)
