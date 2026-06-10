@@ -347,7 +347,59 @@ demos.plasma = {
   end,
 }
 
-local demoOrder = { "ripple", "life", "plasma" }
+local linePalette = {
+  colors.black,
+  colors.gray,
+  colors.lightGray,
+  colors.white,
+  colors.lightBlue,
+  colors.cyan,
+}
+
+demos.line = {
+  name = "Bottom To Top Line",
+  state = { y = 1, frac = 0 },
+  onTouch = function(_self, _x, _y, _w, _h)
+  end,
+  update = function(self, dt, _w, h)
+    local speed = math.max(1, h / 3)
+    self.state.frac = self.state.frac + (dt * speed)
+
+    while self.state.frac >= 1 do
+      self.state.frac = self.state.frac - 1
+      self.state.y = self.state.y - 1
+      if self.state.y < 1 then
+        self.state.y = h
+      end
+    end
+
+    if self.state.y > h then
+      self.state.y = h
+    end
+  end,
+  render = function(self, buf, w, h)
+    local y = self.state.y
+    if y < 1 or y > h then
+      y = h
+      self.state.y = y
+    end
+
+    for row = 1, h do
+      local distance = math.abs(row - y)
+      local colorIndex = math.min(distance + 1, #linePalette)
+      local bg = linePalette[colorIndex]
+
+      for x = 1, w do
+        local cell = buf[row][x]
+        cell.bg = bg
+        cell.fg = colors.white
+        cell.text = " "
+      end
+    end
+  end,
+}
+
+local demoOrder = { "line", "ripple", "life", "plasma" }
 local currentDemo = 1
 
 local function renderStatus()

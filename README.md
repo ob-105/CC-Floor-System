@@ -55,9 +55,10 @@ The installer downloads main runtime files and creates `/startup` to run `main.l
 
 ## Controls (main computer)
 
-- `1` = Ripple
-- `2` = Game Of Life
-- `3` = Plasma
+- `1` = Bottom To Top Line
+- `2` = Ripple
+- `3` = Game Of Life
+- `4` = Plasma
 - `R` = force rediscover nodes
 
 ## Files
