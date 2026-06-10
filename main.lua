@@ -6,14 +6,14 @@ local MAX_FRAME_SECONDS = 0.35
 local DISCOVER_SECONDS = 2.0
 local NODE_TIMEOUT_SECONDS = 8.0
 local MAX_RIPPLE_SOURCES = 12
-local RIPPLE_MAX_AGE = 9.0
-local RIPPLE_WAVE_SPEED = 3.2
-local RIPPLE_DAMPING = 0.28
-local RIPPLE_PULSE_WIDTH = 2.8
+local RIPPLE_MAX_AGE = 16.0
+local RIPPLE_WAVE_SPEED = 18.0
+local RIPPLE_DAMPING = 0.08
+local RIPPLE_PULSE_WIDTH = 3.6
 local RIPPLE_FREQ = 0.9
-local RIPPLE_TRAIL_DAMPING = 0.18
-local RIPPLE_IMPACT_DECAY = 1.4
-local RIPPLE_IMPACT_STRENGTH = 1.8
+local RIPPLE_TRAIL_DAMPING = 0.08
+local RIPPLE_IMPACT_DECAY = 0.9
+local RIPPLE_IMPACT_STRENGTH = 2.4
 local RIPPLE_PIXEL_SCALE = 4
 
 if not peripheral.isPresent(MODEM_SIDE) or peripheral.getType(MODEM_SIDE) ~= "modem" then
@@ -109,7 +109,7 @@ end
 local function frameInterval(nodeCount, demoKey)
   local interval = MIN_FRAME_SECONDS + (math.max(nodeCount, 1) - 1) * 0.01
   if demoKey == "ripple" then
-    interval = interval + 0.06
+    interval = interval + 0.01
   end
   if demoKey == "life" then
     interval = interval + 0.02

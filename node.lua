@@ -176,7 +176,7 @@ local ripplePalette = {
   colors.red,
 }
 
-local DEFAULT_RIPPLE_MAX_DISTANCE = 56
+local DEFAULT_RIPPLE_MAX_DISTANCE = 120
 local rippleHadEnergy = false
 
 local function min2(a, b)
@@ -190,14 +190,14 @@ local function drawRippleState(mon, msg, stackIndex, localPanelWidth, localPanel
   local liveCount = math.max(1, math.floor(msg.liveCount or 1))
   local canvasWidth = math.max(1, math.floor(msg.canvasWidth or localPanelWidth))
   local canvasHeight = math.max(1, math.floor(msg.canvasHeight or (localPanelHeight * liveCount)))
-  local maxAge = tonumber(msg.maxAge) or 5.5
+  local maxAge = tonumber(msg.maxAge) or 16.0
   local maxSources = math.max(1, math.floor(tonumber(msg.maxSources) or 6))
-  local waveSpeed = tonumber(msg.waveSpeed) or 3.2
-  local damping = tonumber(msg.damping) or 0.28
-  local pulseWidth = tonumber(msg.pulseWidth) or 2.8
-  local trailDamping = tonumber(msg.trailDamping) or 0.18
-  local impactDecay = tonumber(msg.impactDecay) or 1.4
-  local impactStrength = tonumber(msg.impactStrength) or 1.8
+  local waveSpeed = tonumber(msg.waveSpeed) or 18.0
+  local damping = tonumber(msg.damping) or 0.08
+  local pulseWidth = tonumber(msg.pulseWidth) or 3.6
+  local trailDamping = tonumber(msg.trailDamping) or 0.08
+  local impactDecay = tonumber(msg.impactDecay) or 0.9
+  local impactStrength = tonumber(msg.impactStrength) or 2.4
   local pixelScale = math.max(1, math.floor(tonumber(msg.pixelScale) or 4))
   local src = type(msg.sources) == "table" and msg.sources or {}
 
